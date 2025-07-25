@@ -14,25 +14,27 @@ KubeEdge-Sedna excels at edge-cloud collaborative AI for Computer Vision (CV) ta
 
 - Modify Sedna's data pipeline to enable routers to access raw input data, not just model inference results.
 
-- Develop new Estimator classes and modular LLM handlers (HuggingfaceLLM, VllmLLM, etc.) for NLP workflows.
+- Develop new Estimator classes and modular LLM handlers (HuggingfaceLLM, APIBasedLLM, etc.) for NLP workflows.
 
 - Produce a complete and well-documented example, including code and configuration files.
 
 ## Design Details
 
-The project will address two primary technical challenges:
+### Architecture Overview
+
+The architecture of the joint inference system will consist of:
+- **Edge Worker**: A lightweight model running on edge devices, responsible for lightweight inference and routing decisions.
+- **Cloud Worker**: A more powerful model running in the cloud, handling complex inference tasks and generating more accurate results. As api-based LLMs are often used, this worker will also include API-based LLM handlers.
+
+![architecture](./images/joint-inference-qa-architecture.png)
 
 ### Custom Router and Data Path Modification
 
-![data path](./images/joint-inference-data-path.png)
-
 Sedna's existing routers (`HardExampleMining`) are designed for CV tasks and follow an "inference-then-mining" pattern, where the router can only access the inference result from the edge model. The ianvs example includes a `BERTFilter` which requires a "mining-then-inference" approach, needing access to the original input data to perform its routing logic.
 
-Solution: I will modify `lib/sedna/core/joint_inference/joint_inference.py` to create a new data path. This will be configured via YAML to allow routing algorithms to optionally receive the raw data as input, enabling the implementation of `BERTFilter` and similar algorithms that follow the "mining-then-inference" pattern.
+I will reference the implementation in https://github.com/kubeedge/ianvs/blob/main/examples/resources/third_party/sedna-0.6.0.1-py3-none-any.whl to introduce relevant features. By adding an optional `mining_mode` parameter to the `inference` method of the `JointInference` class (with values "inference-then-mining" or "mining-then-inference", defaulting to the former to ensure seamless compatibility with existing examples), I will enable `JointInference` to flexibly switch between these paths during inference.
 
-To support the new data path, I will add a new configuration item, `router_mode`, to the `JointInference` class. The `router_mode` can be set to either `inference-then-mining` or `mining-then-inference`, with `inference-then-mining` as the default value. 
-
-This change will require updating the `pkg/apis/sedna/v1alpha1/jointinferenceservice_types.go` file to include the new configuration field.
+![data path](./images/joint-inference-data-path.png)
 
 ### Support for NLP Tasks
 
@@ -42,9 +44,46 @@ Solution: I will:
 
 - Create new Estimator classes specifically for NLP inference.
 
-- Develop modular LLM handlers (e.g., `HuggingfaceLLM`, `VllmLLM`, `APIBasedLLM`) that can be reused by both edge and cloud models.
+- Develop modular LLM handlers (e.g., `HuggingfaceLLM`, `APIBasedLLM`) that can be reused by both edge and cloud models.
 
 - Adapt Sedna's data management to handle text datasets.
+
+### Implementation Details
+
+Files to be added include:
+
+```
+|- examples
+|   |- joint_inference
+|      |- answer_generation_inference
+|         |- big_model
+|            |- interface.py
+|            |- big_model.py
+|         |- little_model
+|            |- interface.py
+|            |- little_model.py
+|         answer_generation_inference.yaml
+|         README.md
+```
+
+The `interface.py` files will define the `Estimator` classes for the edge and cloud models, while the `big_model.py` and `little_model.py` files will create and launch the `BigModelService` and `JointInference` instances. The `Estimator` classes will automatically load models from local storage, URLs, or switch to API-based LLMs based on configuration settings.
+
+Files to be modified include:
+```
+|- lib
+|   |- sedna
+|      |- algorithms
+|         |- hard_example_mining.py
+|      |- backend
+|         |- torch
+|            |- __init__.py
+|      |- core
+|         |- joint_inference.py
+```
+
+The modification to `hard_example_mining.py` will focus on adding several new hard-example-mining algorithms: `BertRouter`, `EdgeOnly`, and `CloudOnly`. These new algorithms will be implemented as separate classes and will not affect existing algorithms, ensuring backward compatibility.
+
+The modification to `torch/__init__.py` and `joint_inference.py` aims to enable the framework to support importing URL-based models, rather than only local model weights. This will only involve minor modifications to judgment conditions without changing the main logic, and should not affect existing examples.
 
 ## Project Plan
 
