@@ -87,41 +87,48 @@ The modification to `torch/__init__.py` and `joint_inference.py` aims to enable 
 
 ## Project Plan
 
-### Phase 1: Analysis and Design (Week 1)
+### Phase 1: Foundation and Analysis (Weeks 1-2)
 
-1. **Requirements Analysis**
-   - Study the LLM joint inference example in KubeEdge-Ianvs
-   - Analyze Sedna's joint inference architecture
-   - Identify necessary modifications for migration
+1. **Environment Setup and Analysis**
+   - Set up development environment with KubeEdge-Sedna
+   - Conduct deep analysis of the existing joint inference implementation in Sedna
 
-2. **Design**
-   - Design router modes and data flow paths
-   - Plan Estimator class structures for NLP tasks
-   - Outline LLM handler implementations
+2. **Architecture Design**
+   - Design the "mining-then-inference" data flow modification for `JointInference` class
+   - Plan NLP-specific Estimator class hierarchy and interfaces
+   - Define modular LLM handler architecture (HuggingfaceLLM, APIBasedLLM)
 
-### Phase 2: Core Implementation (Weeks 2-3)
+### Phase 2: Core Framework Development (Weeks 3-4)
 
-3. **Data Path Modification**
-   - Modify `joint_inference.py` to support "mining-then-inference" mode
-   - Update API definitions for new configuration options
-   - Implement data routing logic changes
+3. **Data Path Enhancement**
+   - Implement `mining_mode` parameter in `JointInference.inference()` method
+   - Modify core joint inference logic to support both inference patterns
+   - Update hard example mining algorithms to handle raw input data access
 
-4. **NLP Support Implementation**
-   - Develop NLP Estimator classes
-   - Implement basic LLM handlers (HuggingfaceLLM, VllmLLM)
-   - Create text data processing functionality
+4. **NLP Infrastructure Development**
+   - Create base NLP Estimator classes for edge and cloud models
+   - Implement modular LLM handlers with unified interfaces
+   - Develop text data processing and management capabilities
+   - Add URL-based model loading support to torch backend
 
-### Phase 3: Integration and Testing (Weeks 4-5)
+### Phase 3: Algorithm Implementation (Weeks 5-6)
 
-5. **Integration**
-   - Integrate new components with Sedna framework
-   - Implement BERTFilter router
-   - Create complete joint inference pipeline for LLMs
+5. **Custom Router Development**
+   - Implement `BertRouter` for BERT-based filtering decisions
+   - Create `EdgeOnly` and `CloudOnly` routing algorithms
+   - Ensure backward compatibility with existing CV-based routers
 
-6. **Testing and Documentation**
-   - Develop essential tests for new components
-   - Write detailed documentation and usage examples
-   - Create example configurations
+6. **Model Integration**
+   - Develop edge model interface with lightweight inference capabilities
+   - Implement cloud model interface supporting both local and API-based LLMs
+   - Create configuration-driven model loading and switching logic
+
+### Phase 4: Example Development and Testing (Weeks 7-8)
+
+7. **Complete Example Implementation**
+   - Build the answer generation inference example with all components
+   - Create comprehensive configuration files and deployment scripts
+   - Create comprehensive documentation with usage examples and troubleshooting guides
 
 ### Deliverables
 
