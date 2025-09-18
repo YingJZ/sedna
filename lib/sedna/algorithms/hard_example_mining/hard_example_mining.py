@@ -18,9 +18,14 @@ import abc
 import math
 import random
 from sedna.common.class_factory import ClassFactory, ClassType
+import logging
+import torch
+from transformers import pipeline
 
-__all__ = ('ThresholdFilter', 'CrossEntropyFilter', 'IBTFilter')
+__all__ = ('ThresholdFilter', 'CrossEntropyFilter', 'IBTFilter', 'RandomFilter',
+           'AlwaysHardFilter', 'BertFilter')
 
+LOG = logging.getLogger(__name__)
 
 class BaseFilter(metaclass=abc.ABCMeta):
     """The base class to define unified interface."""
@@ -204,3 +209,119 @@ class RandomFilter(BaseFilter):
         if random.uniform(0, 1) < self.random_ratio:
             return True
         return False
+
+@ClassFactory.register(ClassType.HEM, alias="AlwaysHard")
+class AlwaysHardFilter(BaseFilter):
+    def __init__(self, **kwargs):
+        pass
+    def __call__(self, *args, **kwargs):
+        return True
+
+@ClassFactory.register(ClassType.HEM, alias="BertRouter")
+class BERTFilter(BaseFilter, abc.ABC):
+    def __init__(self, **kwargs):
+        """Initialize the BERTFilter.
+
+        Parameters
+        ----------
+        kwargs: dict
+            Possible kwargs are:
+            - `model`: str, default "routellm/bert". The model to be used.
+            - `task`: str, default "text-classification". The task to be used.
+            - `max_length`: int, default 512. The maximum length of the input.
+        """
+        super().__init__(**kwargs)
+
+        self.kwargs = kwargs
+
+        self.model = kwargs.get("model", "routellm/bert")
+        self.task = kwargs.get("task", "text-classification")
+        self.max_length = kwargs.get("max_length", 512)
+        self.device = kwargs.get("device", "cuda" if torch.cuda.is_available() else "cpu")
+
+        try:
+            self.classifier = pipeline(self.task, model=self.model, device=self.device)
+        except Exception as e:
+            LOG.error(f"Failed to initialize the pipeline: {e}")
+            raise RuntimeError("Pipeline initialization failed. Please check the model and task parameters.")
+
+    def _text_classification_postprocess(self, result):
+        """Postprocess the text classification result
+
+        Parameters
+        ----------
+        result : list
+            The result from the classifier. Example:
+            ```
+            [{"label": "LABEL_0", "score": 0.5},
+            {"label": "LABEL_1", "score": 0.4},
+            {"label": "LABEL_2", "score": 0.1}]
+
+        Returns
+        -------
+        bool
+            `True` means hard sample, `False` means not.
+        """
+
+        res = {item["label"]:item["score"] for item in result}
+        scaled_score = res["LABEL_0"] / (res["LABEL_0"] + res["LABEL_1"])
+
+        thresold = self.kwargs.get("threshold", 0.5)
+        label = "LABEL_0" if scaled_score >= thresold else "LABEL_1"
+        return False if label == "LABEL_0" else True
+
+    def _predict(self, data):
+        """Predict the data label
+
+        Parameters
+        ----------
+        data : dict
+            See format at BaseLLM's `inference()`.
+
+        Returns
+        -------
+        bool
+            `True` means hard sample, `False` means not.
+
+        Raises
+        ------
+        NotImplementedError
+            If the task is not supported
+        """
+
+        if self.task == "text-classification":
+            result = self.classifier(data, top_k=None)
+            is_hard_sample = self._text_classification_postprocess(result[0])
+        else:
+            raise NotImplementedError
+
+        return is_hard_sample
+
+    def _preprocess(self, data):
+        """Preprocess the data
+
+        Parameters
+        ----------
+        data : dict
+            See format at BaseLLM's `inference()`.
+
+        Returns
+        -------
+        str
+            query string
+        """
+        query = data.get("query")
+        if "query" in query:
+            return query["query"][:self.max_length]
+        else:
+            return query[:self.max_length]
+
+
+    def cleanup(self):
+        """Release the classifier model
+        """
+        del self.classifier
+
+    def __call__(self, data=None) -> bool:
+        # data = self._preprocess(data)
+        return self._predict(data)

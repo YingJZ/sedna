@@ -1,3 +1,4 @@
+# CLOUD_NODE=sedna-mini-control-plane EDGE_NODE=edge0 kubectl create -f - <<EOF
 apiVersion: sedna.io/v1alpha1
 kind: JointInferenceService
 metadata:
@@ -19,14 +20,16 @@ spec:
         nodeName: $EDGE_NODE
         dnsPolicy: ClusterFirstWithHostNet
         containers:
-        - image: kubeedge/sedna-example-joint-inference-answer-generation-little:v0.1.0
+        - image: yingjz/sedna-little:v0.1.0
           imagePullPolicy: IfNotPresent
           name:  little-model
           env:  # user defined environments
+          - name: "BACKEND_TYPE"
+            value: "TORCH"
           - name: "mining_mode"
             value: "mining-then-inference"
           - name: "model_load_mode"
-            value: "file"
+            value: "url"
           - name: "input_text"
             value: "/data/input"
           - name: "all_examples_inference_output"
@@ -48,7 +51,7 @@ spec:
           - name: outputdir
             hostPath:
               # user must create the directory in host
-              path: /joint_inference/output
+              path: /joint_inference
               type: Directory
 
   cloudWorker:
@@ -59,13 +62,15 @@ spec:
         nodeName: $CLOUD_NODE
         dnsPolicy: ClusterFirstWithHostNet
         containers:
-          - image: kubeedge/sedna-example-joint-inference-answer-generation-big:v0.1.0
+          - image: yingjz/sedna-big:v0.1.0
             name:  big-model
             imagePullPolicy: IfNotPresent
             env:
+              - name: "BACKEND_TYPE"
+                value: "TORCH"
               - name: "model_load_mode"
-                value: "url"
+                value: "api"
             resources:
               requests:
                 memory: 2Gi
-
+EOF

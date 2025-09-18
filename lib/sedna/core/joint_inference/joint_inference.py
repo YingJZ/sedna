@@ -263,7 +263,7 @@ class JointInference(JobBase):
             callback_func = ClassFactory.get_cls(
                 ClassType.CALLBACK, post_process)
         
-        mining_mode = os.environ.get("MINING_MODE", "inference-then-mining")
+        mining_mode = self.get_parameters("MINING_MODE", "inference-then-mining")
 
         if mining_mode == "inference-then-mining":
             res, edge_result = self._get_edge_result(data, callback_func, **kwargs)

@@ -1,4 +1,5 @@
 import logging
+import os
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
 
@@ -12,7 +13,9 @@ class Estimator:
         self.model = None
 
     def load(self, model_path=""):
-        LOG.warning(f"Loading model from {model_path}")
+        if not model_path:
+            model_path = os.environ.get("MODEL_URL")
+        LOG.info(f"Loading model from {model_path}")
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
         self.model = AutoModelForCausalLM.from_pretrained(model_path).to(self.device)
         LOG.info("Model loaded successfully.")
