@@ -5,16 +5,39 @@ import torch
 
 LOG = logging.getLogger(__name__)
 
+def replace_prefix(model_path, prefix, new_prefix):
+    if model_path.startswith(prefix):
+        model_path = model_path[len(prefix):]
+        if model_path[0] == '/':
+            model_path = model_path[1:]
+        return new_prefix + model_path
+    return model_path
+
+# Format model path based on model load mode
+def format_model_path(model_path):
+    model_load_mode = os.environ.get("MODEL_LOAD_MODE", "file")
+    if model_load_mode == "hf":
+        model_path = replace_prefix(model_path, os.environ.get("DATA_PATH_PREFIX", ""), "")
+    elif model_load_mode == "http":
+        model_path = replace_prefix(model_path, "/downloads/", "http://")
+    elif model_load_mode == "https":
+        model_path = replace_prefix(model_path, "/downloads/", "https://")
+    return model_path
+
 class Estimator:
     def __init__(self, **kwargs):
         self.model_name = kwargs.get('model_name', 'distilgpt2')
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.tokenizer = None
         self.model = None
+        self.model_load_mode = os.environ.get("MODEL_LOAD_MODE", "file")
 
     def load(self, model_path=""):
         if not model_path:
             model_path = os.environ.get("MODEL_URL")
+
+        model_path = format_model_path(model_path)
+
         LOG.info(f"Loading model from {model_path}")
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
         self.model = AutoModelForCausalLM.from_pretrained(model_path).to(self.device)

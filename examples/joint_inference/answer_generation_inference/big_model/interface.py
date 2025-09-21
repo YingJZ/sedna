@@ -9,6 +9,24 @@ import json
 
 LOG = logging.getLogger(__name__)
 
+def replace_prefix(model_path, prefix, new_prefix):
+    if model_path.startswith(prefix):
+        model_path = model_path[len(prefix):]
+        if model_path[0] == '/':
+            model_path = model_path[1:]
+        return new_prefix + model_path
+    return model_path
+
+# Format model path based on model load mode
+def format_model_path(model_path):
+    model_load_mode = os.environ.get("MODEL_LOAD_MODE", "file")
+    if model_load_mode == "hf":
+        model_path = replace_prefix(model_path, os.environ.get("DATA_PATH_PREFIX", ""), "")
+    elif model_load_mode == "http":
+        model_path = replace_prefix(model_path, "/downloads/", "http://")
+    elif model_load_mode == "https":
+        model_path = replace_prefix(model_path, "/downloads/", "https://")
+    return model_path
 
 class BaseLLM(ABC):
     
@@ -34,6 +52,7 @@ class HuggingFaceLLM(BaseLLM):
     
     def load(self, model_url: str = "") -> None:
         model_path = model_url if model_url else os.environ.get("MODEL_URL", self.model_name)
+        model_path = format_model_path(model_path)  
         
         LOG.info(f"Loading HuggingFace model from {model_path}")
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
@@ -63,6 +82,7 @@ class APIBasedLLM(BaseLLM):
     
     def load(self, model_url: str = "") -> None:
         model_path = model_url if model_url else os.environ.get("MODEL_URL", self.model_name)
+        model_path = format_model_path(model_path)
         
         self.api_url = model_path if model_path.startswith(('http://', 'https://')) else f"http://{model_path}"
         LOG.info(f"API mode: Using endpoint {self.api_url}")
@@ -127,12 +147,14 @@ class Estimator:
     def __init__(self, **kwargs):
         self.load_mode = os.environ.get("MODEL_LOAD_MODE", "file")
         
-        if self.load_mode == "api":
+        if self.load_mode in ("http", "https"):
             self._llm = APIBasedLLM(**kwargs)
             LOG.info("Using API-based LLM implementation")
-        else:
+        elif self.load_mode == "hf":
             self._llm = HuggingFaceLLM(**kwargs)
             LOG.info("Using HuggingFace LLM implementation")
+        else:
+            raise ValueError(f"Unsupported MODEL_LOAD_MODE: {self.load_mode}")
     
     def load(self, model_url: str = "") -> None:
         return self._llm.load(model_url)
