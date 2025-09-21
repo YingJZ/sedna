@@ -230,12 +230,12 @@ class BERTFilter(BaseFilter, abc.ABC):
             - `task`: str, default "text-classification". The task to be used.
             - `max_length`: int, default 512. The maximum length of the input.
         """
-        self.kwargs = kwargs
 
         self.model = kwargs.get("model", "routellm/bert")
         self.task = kwargs.get("task", "text-classification")
-        self.max_length = kwargs.get("max_length", 512)
+        self.max_length = int(kwargs.get("max_length", 512))
         self.device = kwargs.get("device", "cuda" if torch.cuda.is_available() else "cpu")
+        self.threshold = float(kwargs.get("threshold", 0.5))
 
         try:
             self.classifier = pipeline(self.task, model=self.model, device=self.device)
@@ -264,8 +264,7 @@ class BERTFilter(BaseFilter, abc.ABC):
         res = {item["label"]:item["score"] for item in result}
         scaled_score = res["LABEL_0"] / (res["LABEL_0"] + res["LABEL_1"])
 
-        thresold = self.kwargs.get("threshold", 0.5)
-        label = "LABEL_0" if scaled_score >= thresold else "LABEL_1"
+        label = "LABEL_0" if scaled_score >= self.threshold else "LABEL_1"
         return False if label == "LABEL_0" else True
 
     def _predict(self, data):
