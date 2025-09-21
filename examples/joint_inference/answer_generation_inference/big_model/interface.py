@@ -4,8 +4,7 @@ from abc import ABC, abstractmethod
 from typing import List, Any
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
-import requests
-import json
+from openai import OpenAI
 
 LOG = logging.getLogger(__name__)
 
@@ -31,7 +30,7 @@ def format_model_path(model_path):
 class BaseLLM(ABC):
     
     def __init__(self, **kwargs):
-        self.model_name = kwargs.get('model_name', os.environ.get('MODEL_NAME', 'gpt2-xl'))
+        self.model_name = kwargs.get('model_name', os.environ.get('MODEL_NAME', 'deepseek-chat'))
 
     @abstractmethod
     def load(self, model_url: str = "") -> None:
@@ -79,66 +78,45 @@ class APIBasedLLM(BaseLLM):
         super().__init__(**kwargs)
         self.api_url = None
         self.api_key = kwargs.get('api_key', os.environ.get('API_KEY', ''))
+        self.client = None
     
     def load(self, model_url: str = "") -> None:
         model_path = model_url if model_url else os.environ.get("MODEL_URL", self.model_name)
         model_path = format_model_path(model_path)
         
         self.api_url = model_path if model_path.startswith(('http://', 'https://')) else f"http://{model_path}"
+        
+        self.client = OpenAI(
+            api_key=self.api_key,
+            base_url=f"{self.api_url}/v1" if not self.api_url.endswith('/v1') else self.api_url
+        )
         LOG.info(f"API mode: Using endpoint {self.api_url}")
     
     def predict(self, data: Any, **kwargs) -> List[str]:
-        if self.api_url is None:
-            raise RuntimeError("API URL must be set before prediction")
+        if self.client is None:
+            raise RuntimeError("Client must be initialized before prediction")
         
         text = data[0] if isinstance(data, (list, tuple)) else data
         
-        payload = {
+        messages = [{"role": "user", "content": text}]
+        
+        completion_params = {
             "model": self.model_name,
-            "messages": [
-                {"role": "user", "content": text}
-            ],
-            "stream": False
+            "messages": messages
         }
         
         generation_params = ['max_tokens', 'temperature', 'top_p', 'frequency_penalty', 'presence_penalty']
         for param in generation_params:
             if param in kwargs:
-                payload[param] = kwargs[param]
-        
-        headers = {
-            "Content-Type": "application/json"
-        }
-        
-        if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
+                completion_params[param] = kwargs[param]
         
         try:
-            response = requests.post(
-                f"{self.api_url}/chat/completions",
-                headers=headers,
-                json=payload,
-                timeout=30
-            )
-            response.raise_for_status()
-            
-            result = response.json()
-            
-            if 'choices' in result and len(result['choices']) > 0:
-                generated_text = result['choices'][0]['message']['content']
-                return [generated_text]
-            else:
-                LOG.error(f"Unexpected API response format: {result}")
-                return ["Error: Invalid API response format"]
+            completion = self.client.chat.completions.create(**completion_params)
+            generated_text = completion.choices[0].message.content
+            return [generated_text]
                 
-        except requests.exceptions.RequestException as e:
-            LOG.error(f"API request failed: {e}")
-            return [f"Error: API request failed - {str(e)}"]
-        except json.JSONDecodeError as e:
-            LOG.error(f"Failed to parse API response: {e}")
-            return ["Error: Failed to parse API response"]
         except Exception as e:
-            LOG.error(f"Unexpected error during API call: {e}")
+            LOG.error(f"API call failed: {e}")
             return [f"Error: {str(e)}"]
 
 
