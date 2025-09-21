@@ -19,12 +19,13 @@ def replace_prefix(model_path, prefix, new_prefix):
 # Format model path based on model load mode
 def format_model_path(model_path):
     model_load_mode = os.environ.get("MODEL_LOAD_MODE", "file")
+    prefix = os.environ.get("DATA_PATH_PREFIX", "")
     if model_load_mode == "hf":
-        model_path = replace_prefix(model_path, os.environ.get("DATA_PATH_PREFIX", ""), "")
+        model_path = replace_prefix(model_path, prefix, "")
     elif model_load_mode == "http":
-        model_path = replace_prefix(model_path, "/downloads/", "http://")
+        model_path = replace_prefix(model_path, prefix, "http://")
     elif model_load_mode == "https":
-        model_path = replace_prefix(model_path, "/downloads/", "https://")
+        model_path = replace_prefix(model_path, prefix, "https://")
     return model_path
 
 class BaseLLM(ABC):
