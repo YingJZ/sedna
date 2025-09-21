@@ -230,8 +230,6 @@ class BERTFilter(BaseFilter, abc.ABC):
             - `task`: str, default "text-classification". The task to be used.
             - `max_length`: int, default 512. The maximum length of the input.
         """
-        super().__init__(**kwargs)
-
         self.kwargs = kwargs
 
         self.model = kwargs.get("model", "routellm/bert")
