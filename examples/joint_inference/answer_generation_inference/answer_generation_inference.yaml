@@ -1,4 +1,3 @@
-# CLOUD_NODE=sedna-mini-control-plane EDGE_NODE=edge0 kubectl create -f - <<EOF
 apiVersion: sedna.io/v1alpha1
 kind: JointInferenceService
 metadata:
@@ -9,7 +8,7 @@ spec:
     model:
       name: "answer-generation-inference-little-model"
     hardExampleMining:
-      name: "BERTRouter"
+      name: "BertRouter"
       parameters:
         - key: "model"
           value: "routellm/bert"
@@ -20,16 +19,16 @@ spec:
         nodeName: $EDGE_NODE
         dnsPolicy: ClusterFirstWithHostNet
         containers:
-        - image: yingjz/sedna-little:v0.1.0
+        - image: kubeedge/sedna-example-joint-inference-answer-generation-little:v0.4.0
           imagePullPolicy: IfNotPresent
           name:  little-model
           env:  # user defined environments
           - name: "BACKEND_TYPE"
             value: "TORCH"
-          - name: "mining_mode"
+          - name: "MINING_MODE"
             value: "mining-then-inference"
-          - name: "model_load_mode"
-            value: "url"
+          - name: "MODEL_LOAD_MODE"
+            value: "hf"
           - name: "input_text"
             value: "/data/input"
           - name: "all_examples_inference_output"
@@ -62,15 +61,18 @@ spec:
         nodeName: $CLOUD_NODE
         dnsPolicy: ClusterFirstWithHostNet
         containers:
-          - image: yingjz/sedna-big:v0.1.0
+          - image: kubeedge/sedna-example-joint-inference-answer-generation-big:v0.4.0
             name:  big-model
             imagePullPolicy: IfNotPresent
             env:
               - name: "BACKEND_TYPE"
                 value: "TORCH"
-              - name: "model_load_mode"
-                value: "api"
+              - name: "MODEL_LOAD_MODE"
+                value: "https"
+              - name: "API_KEY"
+                value: $API_KEY
+              - name: "MODEL_NAME"
+                value: "deepseek-chat"
             resources:
               requests:
                 memory: 2Gi
-EOF
