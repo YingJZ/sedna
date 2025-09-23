@@ -23,7 +23,7 @@ import torch
 from transformers import pipeline
 
 __all__ = ('ThresholdFilter', 'CrossEntropyFilter', 'IBTFilter', 'RandomFilter',
-           'AlwaysHardFilter', 'BertFilter')
+           'CloudOnlyFilter', 'EdgeOnlyFilter', 'BertRouterFilter')
 
 LOG = logging.getLogger(__name__)
 
@@ -210,15 +210,22 @@ class RandomFilter(BaseFilter):
             return True
         return False
 
-@ClassFactory.register(ClassType.HEM, alias="AlwaysHard")
-class AlwaysHardFilter(BaseFilter):
+@ClassFactory.register(ClassType.HEM, alias="CloudOnly")
+class CloudOnlyFilter(BaseFilter):
     def __init__(self, **kwargs):
         pass
     def __call__(self, *args, **kwargs):
         return True
 
+@ClassFactory.register(ClassType.HEM, alias="EdgeOnly")
+class EdgeOnlyFilter(BaseFilter):
+    def __init__(self, **kwargs):
+        pass
+    def __call__(self, *args, **kwargs):
+        return False
+
 @ClassFactory.register(ClassType.HEM, alias="BertRouter")
-class BERTFilter(BaseFilter, abc.ABC):
+class BertRouterFilter(BaseFilter, abc.ABC):
     def __init__(self, **kwargs):
         """Initialize the BERTFilter.
 
