@@ -8,7 +8,7 @@ LOG = logging.getLogger(__name__)
 def replace_prefix(model_path, prefix, new_prefix):
     if model_path.startswith(prefix):
         model_path = model_path[len(prefix):]
-        if model_path[0] == '/':
+        if model_path.startswith("/"):
             model_path = model_path[1:]
         return new_prefix + model_path
     return model_path

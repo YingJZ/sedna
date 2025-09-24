@@ -87,11 +87,16 @@ class APIBasedLLM(BaseLLM):
         
         self.api_url = model_path if model_path.startswith(('http://', 'https://')) else f"http://{model_path}"
         
+        base_url = self.api_url.rstrip('/')
+        if not base_url.endswith('/v1'):
+            base_url = f"{base_url}/v1"
+        
         self.client = OpenAI(
             api_key=self.api_key,
-            base_url=f"{self.api_url}/v1" if not self.api_url.endswith('/v1') else self.api_url
+            base_url=base_url
         )
-        LOG.info(f"API mode: Using endpoint {self.api_url}")
+        
+        LOG.info(f"API mode: Using endpoint {base_url} with model {self.model_name}")
     
     def predict(self, data: Any, **kwargs) -> List[str]:
         if self.client is None:
