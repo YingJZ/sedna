@@ -5,9 +5,9 @@ RUN apt update \
 
 COPY ./lib/requirements.txt /home
 RUN pip install -r /home/requirements.txt && \
+    pip install torch==2.1.2 --index-url https://download.pytorch.org/whl/cpu && \
     pip install \
     transformers==4.46.3 \
-    torch==2.1.2 --index-url https://download.pytorch.org/whl/cpu \
     accelerate \
     sentencepiece \
     numpy==1.24.4 \

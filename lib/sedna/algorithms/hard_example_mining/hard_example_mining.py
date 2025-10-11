@@ -22,10 +22,12 @@ import logging
 import torch
 from transformers import pipeline
 
-__all__ = ('ThresholdFilter', 'CrossEntropyFilter', 'IBTFilter', 'RandomFilter',
-           'CloudOnlyFilter', 'EdgeOnlyFilter', 'BertRouterFilter')
+__all__ = ('ThresholdFilter', 'CrossEntropyFilter', 'IBTFilter',
+           'RandomFilter', 'CloudOnlyFilter', 'EdgeOnlyFilter',
+           'BertRouterFilter')
 
 LOG = logging.getLogger(__name__)
+
 
 class BaseFilter(metaclass=abc.ABCMeta):
     """The base class to define unified interface."""
@@ -62,6 +64,7 @@ class ThresholdFilter(BaseFilter, abc.ABC):
     threshold: float
         hard coefficient threshold score to filter img, default to 0.5.
     """
+
     def __init__(self, threshold: float = 0.5, **kwargs):
         self.threshold = float(threshold)
 
@@ -202,6 +205,7 @@ class RandomFilter(BaseFilter):
             is hard sample: bool
                 `True` means hard sample, `False` means not.
             """
+
     def __init__(self, random_ratio=0.3, **kwargs):
         self.random_ratio = random_ratio
 
@@ -210,19 +214,24 @@ class RandomFilter(BaseFilter):
             return True
         return False
 
+
 @ClassFactory.register(ClassType.HEM, alias="CloudOnly")
 class CloudOnlyFilter(BaseFilter):
     def __init__(self, **kwargs):
         pass
+
     def __call__(self, *args, **kwargs):
         return True
+
 
 @ClassFactory.register(ClassType.HEM, alias="EdgeOnly")
 class EdgeOnlyFilter(BaseFilter):
     def __init__(self, **kwargs):
         pass
+
     def __call__(self, *args, **kwargs):
         return False
+
 
 @ClassFactory.register(ClassType.HEM, alias="BertRouter")
 class BertRouterFilter(BaseFilter, abc.ABC):
@@ -241,14 +250,18 @@ class BertRouterFilter(BaseFilter, abc.ABC):
         self.model = kwargs.get("model", "routellm/bert")
         self.task = kwargs.get("task", "text-classification")
         self.max_length = int(kwargs.get("max_length", 512))
-        self.device = kwargs.get("device", "cuda" if torch.cuda.is_available() else "cpu")
+        self.device = kwargs.get(
+            "device", "cuda" if torch.cuda.is_available() else "cpu")
         self.threshold = float(kwargs.get("threshold", 0.5))
 
         try:
-            self.classifier = pipeline(self.task, model=self.model, device=self.device)
+            self.classifier = pipeline(
+                self.task, model=self.model, device=self.device)
         except Exception as e:
             LOG.error(f"Failed to initialize the pipeline: {e}")
-            raise RuntimeError("Pipeline initialization failed. Please check the model and task parameters.")
+            raise RuntimeError(
+                "Pipeline initialization failed. "
+                "Please check the model and task parameters.")
 
     def _text_classification_postprocess(self, result):
         """Postprocess the text classification result
@@ -268,7 +281,7 @@ class BertRouterFilter(BaseFilter, abc.ABC):
             `True` means hard sample, `False` means not.
         """
 
-        res = {item["label"]:item["score"] for item in result}
+        res = {item["label"]: item["score"] for item in result}
         scaled_score = res["LABEL_0"] / (res["LABEL_0"] + res["LABEL_1"])
 
         label = "LABEL_0" if scaled_score >= self.threshold else "LABEL_1"
@@ -319,7 +332,6 @@ class BertRouterFilter(BaseFilter, abc.ABC):
             return query["query"][:self.max_length]
         else:
             return query[:self.max_length]
-
 
     def cleanup(self):
         """Release the classifier model

@@ -95,7 +95,7 @@ Note the setting of the following parameters:
 Make preparation in edge node
 ```
 mkdir -p /joint_inference/input
-echo "What is Sedna?\n" > /joint_inference/input/test.txt
+echo "The future of AI is" > /joint_inference/input/test.txt
 ```
 
 Create joint inference service

@@ -60,7 +60,8 @@ class BigModelService(JobBase):
 
         if callable(self.estimator):
             self.estimator = self.estimator()
-        if self.model_load_mode == "file" and not os.path.exists(self.model_path):
+        if self.model_load_mode == "file" and \
+                not os.path.exists(self.model_path):
             raise FileExistsError(f"{self.model_path} miss")
         else:
             self.estimator.load(self.model_path)
@@ -167,7 +168,8 @@ class JointInference(JobBase):
 
         if callable(self.estimator):
             self.estimator = self.estimator()
-        if self.model_load_mode == "file" and not os.path.exists(self.model_path):
+        if self.model_load_mode == "file" and \
+                not os.path.exists(self.model_path):
             raise FileExistsError(f"{self.model_path} miss")
         else:
             self.estimator.load(self.model_path)
@@ -220,9 +222,10 @@ class JointInference(JobBase):
         self.lc_reporter.update_for_edge_inference()
 
         return res, edge_result
-    
+
     def _get_cloud_result(self, data, post_process, **kwargs):
-        cloud_result = self.cloud.inference(data, post_process=post_process, **kwargs)
+        cloud_result = self.cloud.inference(
+            data, post_process=post_process, **kwargs)
         res = deepcopy(cloud_result)
 
         self.lc_reporter.update_for_collaboration_inference()
@@ -262,11 +265,13 @@ class JointInference(JobBase):
         elif post_process is not None:
             callback_func = ClassFactory.get_cls(
                 ClassType.CALLBACK, post_process)
-        
-        mining_mode = self.get_parameters("MINING_MODE", "inference-then-mining")
+
+        mining_mode = self.get_parameters(
+            "MINING_MODE", "inference-then-mining")
 
         if mining_mode == "inference-then-mining":
-            res, edge_result = self._get_edge_result(data, callback_func, **kwargs)
+            res, edge_result = self._get_edge_result(
+                data, callback_func, **kwargs)
 
             is_hard_example = False
             cloud_result = None
@@ -289,16 +294,15 @@ class JointInference(JobBase):
 
             is_hard_example = self.hard_example_mining_algorithm(data)
             if is_hard_example:
-                res, cloud_result = self._get_cloud_result(data, post_process=post_process, **kwargs)
+                res, cloud_result = self._get_cloud_result(
+                    data, post_process=post_process, **kwargs)
                 edge_result = None
             else:
-                res, edge_result = self._get_edge_result(data, callback_func, **kwargs)
+                res, edge_result = self._get_edge_result(
+                    data, callback_func, **kwargs)
                 cloud_result = None
 
         else:
-            raise ValueError(
-                f"Invalid MINING_MODE: {mining_mode}. "
-                "Supported modes are 'inference-then-mining' and 'mining-then-inference'.")
+            raise ValueError(f"Invalid MINING_MODE: {mining_mode}. ")
 
-        
         return [is_hard_example, res, edge_result, cloud_result]

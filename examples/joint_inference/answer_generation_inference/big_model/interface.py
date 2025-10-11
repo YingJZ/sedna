@@ -11,7 +11,7 @@ LOG = logging.getLogger(__name__)
 def replace_prefix(model_path, prefix, new_prefix):
     if model_path.startswith(prefix):
         model_path = model_path[len(prefix):]
-        if model_path[0] == '/':
+        if model_path.startswith("/"):
             model_path = model_path[1:]
         return new_prefix + model_path
     return model_path
@@ -19,7 +19,7 @@ def replace_prefix(model_path, prefix, new_prefix):
 # Format model path based on model load mode
 def format_model_path(model_path):
     model_load_mode = os.environ.get("MODEL_LOAD_MODE", "file")
-    prefix = os.environ.get("DATA_PATH_PREFIX", "")
+    prefix = os.environ.get("DATA_PATH_PREFIX", "/downloads")
     if model_load_mode == "hf":
         model_path = replace_prefix(model_path, prefix, "")
     elif model_load_mode == "http":
