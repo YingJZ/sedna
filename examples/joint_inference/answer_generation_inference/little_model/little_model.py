@@ -83,8 +83,7 @@ def main():
                 input_text
             )
         if not input_texts:
-            # time.sleep(1)
-            break
+            time.sleep(2)
 
 if __name__ == '__main__':
     main() 
