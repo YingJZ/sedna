@@ -252,9 +252,9 @@ if BACKEND_TYPE == 'TORCH':
             ----------
             kwargs: dict
                 Possible kwargs are:
-                - `model`: str, default "routellm/bert". The model to be used.
-                - `task`: str, default "text-classification". The task to be used.
-                - `max_length`: int, default 512. The maximum length of the input.
+                - `model`: str, default "routellm/bert". The model to use.
+                - `task`: str, default "text-classification". Task to use.
+                - `max_length`: int, default 512. Max length of the input.
             """
 
             self.model = kwargs.get("model", "routellm/bert")
@@ -318,7 +318,8 @@ if BACKEND_TYPE == 'TORCH':
 
             if self.task == "text-classification":
                 result = self.classifier(data, top_k=None)
-                is_hard_sample = self._text_classification_postprocess(result[0])
+                is_hard_sample = \
+                    self._text_classification_postprocess(result[0])
             else:
                 raise NotImplementedError
 
