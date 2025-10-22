@@ -92,13 +92,18 @@ Note the setting of the following parameters:
 - API_KEY: (optional) set your api key for api-based models.
 - MODEL_NAME: (optional) set your model name for api-based models.
 
-Make preparation in edge node
+Make preparation in edge node:
+
 ```
 mkdir -p /joint_inference/input
-echo "The future of AI is" > /joint_inference/input/test.txt
+tee > /joint_inference/input/test.txt << 'EOF'
+The future of AI is
+There is a single choice question about abstract_algebra. Answer the question by replying A, B, C or D.\nQuestion: Statement 1 | If aH is an element of a factor group, then |aH| divides |a|. Statement 2 | If H and K are subgroups of G then HK is a subgroup of G.\nA. True, True\nB. False, False\nC. True, False\nD. False, True\nAnswer: 
+EOF
 ```
 
-Create joint inference service
+Then, create joint inference service:
+
 ```
 CLOUD_NODE="cloud-node-name"
 EDGE_NODE="edge-node-name"
