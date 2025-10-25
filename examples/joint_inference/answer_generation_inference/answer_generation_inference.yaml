@@ -19,7 +19,7 @@ spec:
         nodeName: $EDGE_NODE
         dnsPolicy: ClusterFirstWithHostNet
         containers:
-        - image: kubeedge/sedna-example-joint-inference-answer-generation-little:v0.4.0
+        - image: kubeedge/sedna-example-joint-inference-answer-generation-little:v0.8.0
           imagePullPolicy: IfNotPresent
           name:  little-model
           env:  # user defined environments
@@ -61,7 +61,7 @@ spec:
         nodeName: $CLOUD_NODE
         dnsPolicy: ClusterFirstWithHostNet
         containers:
-          - image: kubeedge/sedna-example-joint-inference-answer-generation-big:v0.4.0
+          - image: kubeedge/sedna-example-joint-inference-answer-generation-big:v0.8.0
             name:  big-model
             imagePullPolicy: IfNotPresent
             env:
