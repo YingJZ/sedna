@@ -1,8 +1,5 @@
 FROM python:3.9-slim
 
-RUN apt update \
-  && apt install -y git curl
-
 COPY ./lib/requirements.txt /home
 RUN pip install -r /home/requirements.txt && \
     pip install torch==2.1.2 --index-url https://download.pytorch.org/whl/cpu && \
