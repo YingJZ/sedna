@@ -47,7 +47,11 @@ class Estimator:
     def predict(self, data, **kwargs):
         text = data[0] if isinstance(data, (list, tuple)) else data
         inputs = self.tokenizer(text, return_tensors="pt").to(self.device)
+        max_new_tokens = int(kwargs.get("max_new_tokens", 50))
         with torch.no_grad():
-            outputs = self.model.generate(**inputs, max_length=50)
+            outputs = self.model.generate(
+                **inputs, 
+                max_new_tokens=max_new_tokens
+            )
         result = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
         return result 
