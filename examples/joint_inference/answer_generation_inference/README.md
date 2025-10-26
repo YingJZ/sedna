@@ -1,5 +1,19 @@
 # Using Joint Inference Service in Answer Generation with LLM
 
+## Background
+
+KubeEdge-Sedna has traditionally excelled at edge-cloud collaborative AI for Computer Vision (CV) tasks, but the increasingly important domain of Large Language Models (LLMs) and Natural Language Processing (NLP) tasks has been underrepresented. This example addresses this gap by demonstrating how to deploy collaborative LLM inference on edge-cloud infrastructure using Sedna's joint inference capabilities.
+
+This example is migrated from the [KubeEdge-Ianvs LLM joint inference example](https://github.com/kubeedge/ianvs/tree/main/examples/cloud-edge-collaborative-inference-for-llm) and serves as a real-world demonstration of how developers can:
+- Deploy lightweight models on resource-constrained edge devices for fast, local inference
+- Leverage powerful cloud-based or API-based LLMs for complex tasks requiring higher accuracy
+- Intelligently route queries between edge and cloud based on complexity using custom routing algorithms
+- Optimize resource usage, reduce latency, and minimize cloud API costs
+
+For detailed design and implementation information, please refer to the [proposal document](../../../docs/proposals/joint-inference-llm.md).
+
+## Overview
+
 This case introduces how to use joint inference service in answer generation scenario.
 
 In the answer generation scenario, the little model (e.g., DistilGPT2) deployed on the edge node can handle simple questions, while the big model (e.g., GPT-3.5 via API) deployed on the cloud node can tackle more complex questions. The joint inference service uses a hard example mining algorithm (e.g., BertRouter) to identify which questions should be processed by the big model in the cloud, thereby optimizing resource usage and response time.
@@ -98,6 +112,8 @@ Make preparation in edge node:
 mkdir -p /joint_inference/input
 tee > /joint_inference/input/test.txt << 'EOF'
 The future of AI is
+The president of the United States is
+There is a single choice question about abstract_algebra. Answer the question by replying A, B, C or D.\nQuestion: Find all c in Z_3 such that Z_3[x]/(x^2 + c) is a field.\nA. 0\nB. 1\nC. 2\nD. 3\nAnswer: 
 There is a single choice question about abstract_algebra. Answer the question by replying A, B, C or D.\nQuestion: Statement 1 | If aH is an element of a factor group, then |aH| divides |a|. Statement 2 | If H and K are subgroups of G then HK is a subgroup of G.\nA. True, True\nB. False, False\nC. True, False\nD. False, True\nAnswer: 
 EOF
 ```
@@ -198,7 +214,46 @@ EOF
 kubectl get jointinferenceservices.sedna.io
 ```
 
+![](images/service_status.png)
+
 ### Check Inference Result
 
 You can check the inference results in the output path (e.g. `/joint_inference/output`) defined in the JointInferenceService config.
+
+![](images/inference_result.png)
+
+### Experiment with Different Thresholds
+
+I have randomly selected 1000 questions from [this dataset](https://www.kaggle.com/datasets/kubeedgeianvs/ianvs-mmlu-5shot) and run experiments with different threshold settings for the BertRouter hard example mining algorithm. The results are as follows:
+
+| Threshold | Easy Samples % | Hard Samples % | Easy Tokens % | Hard Tokens % |
+|-----------|----------------|----------------|----------------|----------------|
+| 0.43      | 0.80%          | 99.20%        | 0.48%          | 99.52%        |
+| 0.44      | 10.90%         | 89.10%        | 10.12%        | 89.88%        |
+| 0.45      | 40.50%         | 59.50%        | 38.09%        | 61.91%        |
+| 0.46      | 65.40%         | 34.60%        | 56.76%        | 43.24%        |
+| 0.47      | 94.30%         | 5.70%         | 95.54%        | 4.46%         |
+| 0.48      | 99.20%         | 0.80%         | 98.98%        | 1.02%         |
+| 0.49      | 100.00%        | 0.00%         | 100.00%       | 0.00%         |
+| 0.50      | 100.00%        | 0.00%         | 100.00%       | 0.00%         |
+
+As the threshold increases, the proportion of samples and tokens processed by the big model in the cloud decreases significantly. This allows for fine-tuning the balance between edge and cloud processing based on specific application requirements.
+
+## Future Work
+
+### Enhanced Model CRD Handling in Sedna Control Plane
+
+**Current Limitation**: Sedna's control plane currently assumes all Model CRDs point to downloadable model weights and attempts to download and mount them into containers. This design does not support modern LLM deployment patterns such as API-based inference or Hugging Face model identifiers.
+
+**Temporary Workarounds in This Example**:
+- For API-based models (e.g., DeepSeek API), we use a non-standard URL format (`/api.deepseek.com/v1` instead of `https://api.deepseek.com/v1`) and manually add the `https://` prefix in application code
+- Empty directories (e.g., `/api.deepseek.com`, `/distilbert`) must be created on nodes to bypass mounting checks
+- The actual model loading logic is entirely handled at the application layer rather than by the control plane
+
+**What's Needed**: The control plane should be extended to natively support:
+1. API-based LLM inference (no download/mount required)
+2. Hugging Face model identifiers (e.g., `bert-base-uncased`, `meta-llama/Llama-2-7b-hf`)
+3. Backward compatibility with existing local weight scenarios
+
+For detailed discussion and proposed solutions, please see [Issue #483](https://github.com/kubeedge/sedna/issues/483).
 
